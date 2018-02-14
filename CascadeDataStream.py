@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python2.7
 
 import csv
 import sys
@@ -106,7 +106,7 @@ def DataProcessor(input_file):
             diversity = -1  # Defining the value of diversity to start with. -1 is to make the first occurrence zero
 
             while line:  # This while loop is to read one line at a time until the lines are finished
-                current_line = [item.strip(',\n') for item in line.split(';')]  # Split the line to a list at semicolon
+                current_line = [item.strip(',\n\r') for item in line.split(';')]  # Split the line to list at semicolon
                 line = f.readline()
                 if current_line[2] != "":  # Check if there are identifiers, process it then. Discard otherwise
                     # Updated list converts the identifiers to a list, sorts them, & converts them back to a string
@@ -126,6 +126,7 @@ def DataProcessor(input_file):
                             roots_writer.writerow([current_line_sorted[0], identifier])  # Write roots to the csv file
                         else:  # If identifier already present in links dictionary
                             links_writer.writerow([links_dict[identifier], current_line_sorted[0], identifier])
+                            # Add an edge to the graph object
                             links_dict[identifier] = current_line_sorted[0]  # Update identifier's ID in links_dict
 
                     # Entropy is also called Shannon index (H'). Pielou (J) = H'/ln(S). S is total species (unique)
@@ -136,15 +137,16 @@ def DataProcessor(input_file):
                     line, if the identifiers string is already present in the identifiers_watched dictionary, its value
                     (specificity) is incremented by 1. When a new identifier string is observed, its diversity is also
                     incremented by 1."""
-                    if current_line_sorted[2] not in identifiers_watched:
+                    if current_line_sorted[2] not in identifiers_seen:
                         diversity += 1  # Upon seeing a new identifier set, increment diversity by 1
-                        identifiers_watched[current_line_sorted[2]] = 0  # Add identifier set to dict with 0 specificity
+                        # Add identifier set to dict with 0 specificity and the current value of diversity
+                        identifiers_seen[current_line_sorted[2]] = [0, diversity]
                         div = diversity  # div value used so that 'diversity' value does not change again and again
                     else:  # If identifier already in identifiers_watched dictionary
-                        identifiers_watched[current_line_sorted[2]] += 1  # Increment its value (specificity) by 1
-                        div = 0  # diversity zero due to a duplicate identifier set
+                        identifiers_seen[current_line_sorted[2]][0] += 1  # Increment its value (specificity) by 1
+                        div = identifiers_seen[current_line_sorted[2]][1]  # Pick diversity from identifiers_watched
                     nodes_list = [current_line_sorted[0], current_line_sorted[1], current_line_sorted[2],
-                                  identifiers_watched[current_line_sorted[2]], div, '{:.3f}'.format(entropy.entropy()),
+                                  identifiers_seen[current_line_sorted[2]][0], div, '{:.3f}'.format(entropy.entropy()),
                                   pielou]
                     node_writer.writerow(nodes_list)  # Write the row to nodes csv file
 
@@ -161,8 +163,8 @@ entropy = EntropyHolder()
 # links_dictionary is a dictionary to keep the identifiers and the ID of their last occurrence
 links_dict = {}
 
-# identifiers_watched is a dictionary with watched identifiers with their specificity values as keys
-identifiers_watched = {}
+# identifiers_seen is a dictionary having already seen identifiers with their [specificity, diversity] values as keys
+identifiers_seen = {}
 
 # ================================================================================================================== #
 #                                        Main Part of the Program Starts Here                                        #
@@ -195,21 +197,22 @@ time_file = sys.stdout
 # ====================================================================================================== #
 # Write the start and finish times and elapsed time to the file "Script-Report.csv"                      #
 sys.stdout = open('output_files/' + FileName + '-Script-Report.csv', 'w')                                #
-print('The script started running at ', start_time, 'on', start_date)                                    #
-print('The script finished processing at', finish_time, 'on', finish_date)                               #
-print('The script used ', cpu_count, 'CPU processors.')                                                  #
-print('Memory information printed below:')                                                               #
-print('The size of links_dict is: ', (sys.getsizeof(links_dict)) / 1000000, 'MB')                        #
-print('The size of identifiers_watched is: ', (sys.getsizeof(identifiers_watched)) / 1000000, 'MB')      #
-print('Total processing time was', "{0:.2f}".format(time.time() - start), 'seconds.')                    #
+print 'The script started running at ', start_time, 'on', start_date                                     #
+print 'The script finished processing at', finish_time, 'on', finish_date                                #
+print 'The script used', cpu_count, 'CPU processors.'                                                   #
+print 'Memory information printed below:'                                                                #
+print 'The size of links_dict is: ', (sys.getsizeof(links_dict)) / 1000000, 'MB'                         #
+print 'The size of identifiers_watched is: ', (sys.getsizeof(identifiers_seen)) / 1000000, 'MB'       #
+print 'Total processing time was', "{0:.2f}".format(time.time() - start), 'seconds.'                     #
 sys.stdout.close()                                                                                       #
 sys.stdout = time_file                                                                                   #
 # ====================================================================================================== #
 
-print("All Done BOSS!!!")
-print('Total processing time was', "{0:.2f}".format(time.time() - start), 'seconds.')
-print('The size of links_dict is: ', (sys.getsizeof(links_dict)) / 1000000, 'MB')
-print('The size of identifiers_watched is: ', (sys.getsizeof(identifiers_watched)) / 1000000, 'MB')
+print "All Done BOSS!!!"
+print 'Total processing time was', "{0:.2f}".format(time.time() - start), 'seconds.'
+print 'The script used', cpu_count, 'CPU processors.'
+print 'The size of links_dict is: ', (sys.getsizeof(links_dict)) / 1000000, 'MB'
+print 'The size of identifiers_watched is: ', (sys.getsizeof(identifiers_seen)) / 1000000, 'MB'
 
 # --------------------------------------------------- #
 #  A Script by Muhammad Ali Hashmi (09-February-2018) #
