@@ -6,6 +6,7 @@ import multiprocessing
 import time
 import collections
 import math
+import snap
 
 # Record Start time and date to monitor the total run time of script
 start = time.time()
@@ -36,8 +37,8 @@ class EntropyHolder:                                                            
     def __init__(self, labels=[]):                                                                                    #
         self.counts_ = collections.defaultdict(int)                                                                   #
 
-        self.entropy_ = 0                                                                                             #
-        self.sum_ = 0                                                                                                 #
+        self.entropy_ = 0.0                                                                                           #
+        self.sum_ = 0.0                                                                                               #
 
     def __len__(self):                                                                                                #
         return len(self.counts_)                                                                                      #
@@ -55,7 +56,7 @@ class EntropyHolder:                                                            
 
     def _compute_residual(self, count_changes):                                                                       #
         r = sum([change for _, change in count_changes])                                                              #
-        residual = 0                                                                                                  #
+        residual = 0.0                                                                                                #
 
         for label, change in count_changes:                                                                           #
             p_new = (self.counts_[label] + change) / (self.sum_ + r)                                                  #
@@ -105,6 +106,9 @@ def DataProcessor(input_file):
             line = f.readline()  # Read one line at a time and process it
             diversity = -1  # Defining the value of diversity to start with. -1 is to make the first occurrence zero
 
+            diameter = 0  # Define diameter to hold the current diameter value
+            modularity = 0  # Define modularity to hold the current modularity value
+
             while line:  # This while loop is to read one line at a time until the lines are finished
                 current_line = [item.strip(',\n\r') for item in line.split(';')]  # Split the line to list at semicolon
                 line = f.readline()
@@ -112,6 +116,8 @@ def DataProcessor(input_file):
                     # Updated list converts the identifiers to a list, sorts them, & converts them back to a string
                     current_line_sorted = [current_line[0], current_line[1],
                                            ','.join(map(str, sorted((current_line[2]).split(","))))]
+                    G1.AddNode(int(current_line_sorted[0]))  # Add the current node ID to the graph
+                    Nodes.Add(int(current_line_sorted[0]))
 
                     """ The below loop converts the 3rd item of temp_list, i.e. the identifiers string to a list, loops
                      through all the identifiers and checks if the identifier is present in the links_dictionary. If yes
@@ -127,10 +133,16 @@ def DataProcessor(input_file):
                         else:  # If identifier already present in links dictionary
                             links_writer.writerow([links_dict[identifier], current_line_sorted[0], identifier])
                             # Add an edge to the graph object
+                            G1.AddEdge(int(links_dict[identifier]), int(current_line_sorted[0]))
+                            diameter = snap.GetBfsFullDiam(G1, 1)  # Calculate the diameter
+                            modularity = snap.GetModularity(G1, Nodes, len(links_dict))  # Calculate the modularity
                             links_dict[identifier] = current_line_sorted[0]  # Update identifier's ID in links_dict
 
                     # Entropy is also called Shannon index (H'). Pielou (J) = H'/ln(S). S is total species (unique)
                     pielou = '{:.3f}'.format(float(entropy.entropy()) / log2(len(links_dict)))
+
+                    # print 'Diameter:   ', diameter
+                    # print 'Modularity: ', '{:.3f}'.format(modularity)
 
                     """ Below for loop is for taking care of specificity and diversity. It adds all the identifiers from
                     current line (as a string) to the identifiers_watched dictionary with default specificity 0. In next
@@ -145,9 +157,12 @@ def DataProcessor(input_file):
                     else:  # If identifier already in identifiers_watched dictionary
                         identifiers_seen[current_line_sorted[2]][0] += 1  # Increment its value (specificity) by 1
                         div = identifiers_seen[current_line_sorted[2]][1]  # Pick diversity from identifiers_watched
+
+                    """ The order of the nodes_list is as follows:
+                    Node ID; TimeStamp; Identifiers; Specificity; Diversity; Entropy; Pielou; Diameter; Modularity"""
                     nodes_list = [current_line_sorted[0], current_line_sorted[1], current_line_sorted[2],
                                   identifiers_seen[current_line_sorted[2]][0], div, '{:.3f}'.format(entropy.entropy()),
-                                  pielou]
+                                  pielou, diameter, '{:.3f}'.format(modularity)]
                     node_writer.writerow(nodes_list)  # Write the row to nodes csv file
 
 
@@ -155,13 +170,15 @@ def DataProcessor(input_file):
 
 
 # ================================================================================================================== #
-#                               This Section is to Define the Functions for the Script                               #
+#                      This Section is to Define the Dictionaries and Variables for the Script                       #
 # ================================================================================================================== #
-# The class to hold the current entropy
-entropy = EntropyHolder()
+G1 = snap.TNGraph.New()  # The graph in snap
 
-# links_dictionary is a dictionary to keep the identifiers and the ID of their last occurrence
-links_dict = {}
+Nodes = snap.TIntV()  # A Vector of Integers to contain all the Node IDs
+
+entropy = EntropyHolder()  # The class to hold the current entropy
+
+links_dict = {}  # links_dictionary is a dictionary to keep the identifiers and the ID of their last occurrence
 
 # identifiers_seen is a dictionary having already seen identifiers with their [specificity, diversity] values as keys
 identifiers_seen = {}
@@ -172,6 +189,7 @@ identifiers_seen = {}
 
 # Defining a variable to store the input file
 InFile = "examples/foobar.csv"
+# InFile = "examples/prep-e2g-small.csv"
 # InFile = sys.argv[1]
 
 FileName = InFile.split('\\').pop().split('/').pop().rsplit('.', 1)[0]  # Store the name of the input file
@@ -208,12 +226,12 @@ sys.stdout.close()                                                              
 sys.stdout = time_file                                                                                   #
 # ====================================================================================================== #
 
-print "All Done BOSS!!!"
+'''print "All Done BOSS!!!"
 print 'Total processing time was', "{0:.2f}".format(time.time() - start), 'seconds.'
 print 'The script used', cpu_count, 'CPU processors.'
 print 'The size of links_dict is: ', (sys.getsizeof(links_dict)) / 1000000, 'MB'
 print 'The size of identifiers_watched is: ', (sys.getsizeof(identifiers_seen)) / 1000000, 'MB'
-
+'''
 # --------------------------------------------------- #
 #  A Script by Muhammad Ali Hashmi (09-February-2018) #
 # --------------------------------------------------- #
