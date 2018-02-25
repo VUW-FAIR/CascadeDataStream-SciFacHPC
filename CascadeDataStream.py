@@ -7,6 +7,7 @@ import time
 import collections
 import math
 import snap
+import mathchem
 
 # Record Start time and date to monitor the total run time of script
 start = time.time()
@@ -129,9 +130,16 @@ def DataProcessor(input_file):
                         entropy.update([CountChange(identifier, 1)])
                         if identifier not in links_dict:  # If identifier not already present in links dict., add it
                             links_dict[identifier] = current_line_sorted[0]
+                            # Keep Modularity as previously calculated  #!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!
+                            # Keep Diameter as previously calculated    #!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!
                             roots_writer.writerow([current_line_sorted[0], identifier])  # Write roots to the csv file
                         else:  # If identifier already present in links dictionary
                             links_writer.writerow([links_dict[identifier], current_line_sorted[0], identifier])
+
+                            all_edges.append((int(links_dict[identifier]), int(current_line_sorted[0])))
+                            mol_graph.read_edgelist(all_edges)  # Calculation of Wiener index
+                            # print mol_graph.wiener_index()
+
                             # Add an edge to the graph object
                             G1.AddEdge(int(links_dict[identifier]), int(current_line_sorted[0]))
                             diameter = snap.GetBfsFullDiam(G1, 1)  # Calculate the diameter
@@ -140,9 +148,6 @@ def DataProcessor(input_file):
 
                     # Entropy is also called Shannon index (H'). Pielou (J) = H'/ln(S). S is total species (unique)
                     pielou = '{:.3f}'.format(float(entropy.entropy()) / log2(len(links_dict)))
-
-                    # print 'Diameter:   ', diameter
-                    # print 'Modularity: ', '{:.3f}'.format(modularity)
 
                     """ Below for loop is for taking care of specificity and diversity. It adds all the identifiers from
                     current line (as a string) to the identifiers_watched dictionary with default specificity 0. In next
@@ -159,10 +164,12 @@ def DataProcessor(input_file):
                         div = identifiers_seen[current_line_sorted[2]][1]  # Pick diversity from identifiers_watched
 
                     """ The order of the nodes_list is as follows:
-                    Node ID; TimeStamp; Identifiers; Specificity; Diversity; Entropy; Pielou; Diameter; Modularity"""
+                    Node ID; TimeStamp; Identifiers; Specificity; Diversity; Entropy; Pielou; Diameter; Modularity,
+                    Wiener index"""
                     nodes_list = [current_line_sorted[0], current_line_sorted[1], current_line_sorted[2],
                                   identifiers_seen[current_line_sorted[2]][0], div, '{:.3f}'.format(entropy.entropy()),
-                                  pielou, diameter, '{:.3f}'.format(modularity)]
+                                  pielou, diameter, '{:.3f}'.format(modularity), '{:.2f}'.format
+                                  (mol_graph.wiener_index())]
                     node_writer.writerow(nodes_list)  # Write the row to nodes csv file
 
 
@@ -183,13 +190,16 @@ links_dict = {}  # links_dictionary is a dictionary to keep the identifiers and 
 # identifiers_seen is a dictionary having already seen identifiers with their [specificity, diversity] values as keys
 identifiers_seen = {}
 
+all_edges = []  # A list to store all the links (edges) for Wiener index calculation. Memory expensive!!!
+mol_graph = mathchem.Mol()  # Molecular graph construction to calculate Wiener index
+
 # ================================================================================================================== #
 #                                        Main Part of the Program Starts Here                                        #
 # ================================================================================================================== #
 
 # Defining a variable to store the input file
 InFile = "examples/foobar.csv"
-# InFile = "examples/prep-e2g-small.csv"
+# InFile = "examples/prep-e2g-smallest.csv"
 # InFile = sys.argv[1]
 
 FileName = InFile.split('\\').pop().split('/').pop().rsplit('.', 1)[0]  # Store the name of the input file
@@ -226,12 +236,12 @@ sys.stdout.close()                                                              
 sys.stdout = time_file                                                                                   #
 # ====================================================================================================== #
 
-'''print "All Done BOSS!!!"
+print "All Done BOSS!!!"
 print 'Total processing time was', "{0:.2f}".format(time.time() - start), 'seconds.'
 print 'The script used', cpu_count, 'CPU processors.'
 print 'The size of links_dict is: ', (sys.getsizeof(links_dict)) / 1000000, 'MB'
 print 'The size of identifiers_watched is: ', (sys.getsizeof(identifiers_seen)) / 1000000, 'MB'
-'''
+
 # --------------------------------------------------- #
 #  A Script by Muhammad Ali Hashmi (09-February-2018) #
 # --------------------------------------------------- #
