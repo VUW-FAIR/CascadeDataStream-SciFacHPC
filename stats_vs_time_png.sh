@@ -42,12 +42,12 @@ set ytics mirror in # Mirror/Show the small lines on the opposite side of the gr
 ### Set label for x-axis below ###
 set xlabel font "Arial,40"
 set xlabel 'Time Series' offset -1,-5 
-set xrange ['"2003-01-01 00:00"':'"2008-01-10 00:00"'] # Set the range for X-axis
+set xrange [*:*] # Set the range for X-axis
 
 ### Set label for y-axis below ###
 set ylabel font "Arial,40"
-set ylabel offset -1,1 'Entropy'
-set yrange [1.0:14.70] # Set the range for Y-axis
+set ylabel offset -1,1 'Entropy' # Move ylabel 2 points towards x-axis, 0 points to y, and 0 points to z-axis
+set yrange [*:*] # Set the range for Y-axis
 
 #-------------------------------------------#
 #  Set the Line Styles and Plot Formatting  #
