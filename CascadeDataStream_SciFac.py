@@ -21,70 +21,72 @@ start_date = time.strftime("%d/%m/%Y")
 A proof-of-concept implementation of algorithms and formulas described in [1].                                        #
 [1] https://arxiv.org/abs/1403.6348                                                                                   #
 Blaz Sovdat (blaz.sovdat@gmail.com)                                                                                   #
-"""                                                                                                                   #
+"""  #
 
 
-def log2(p):                                                                                                          #
-    return math.log(p, 2) if p > 0 else 0                                                                             #
-                                                                                                                      #
+def log2(p):  #
+    return math.log(p, 2) if p > 0 else 0  #
+    #
 
 
-CountChange = collections.namedtuple('CountChange', ('label', 'change'))                                              #
+CountChange = collections.namedtuple('CountChange', ('label', 'change'))  #
 
 
-class EntropyHolder:                                                                                                  #
-    def __init__(self, labels=[]):                                                                                    #
-        self.counts_ = collections.defaultdict(int)                                                                   #
+class EntropyHolder:  #
+    def __init__(self, labels=[]):  #
+        self.counts_ = collections.defaultdict(int)  #
 
-        self.entropy_ = 0.0                                                                                           #
-        self.sum_ = 0.0                                                                                               #
+        self.entropy_ = 0.0  #
+        self.sum_ = 0.0  #
 
-    def __len__(self):                                                                                                #
-        return len(self.counts_)                                                                                      #
+    def __len__(self):  #
+        return len(self.counts_)  #
 
-    def update(self, count_changes):                                                                                  #
-        r = sum([change for _, change in count_changes])                                                              #
+    def update(self, count_changes):  #
+        r = sum([change for _, change in count_changes])  #
 
-        residual = self._compute_residual(count_changes)                                                              #
+        residual = self._compute_residual(count_changes)  #
 
         self.entropy_ = self.sum_ * (self.entropy_ - log2(self.sum_ / (self.sum_ + r))) / (self.sum_ + r) - residual  #
 
-        self._update_counts(count_changes)                                                                            #
+        self._update_counts(count_changes)  #
 
-        return self.entropy_                                                                                          #
+        return self.entropy_  #
 
-    def _compute_residual(self, count_changes):                                                                       #
-        r = sum([change for _, change in count_changes])                                                              #
-        residual = 0.0                                                                                                #
+    def _compute_residual(self, count_changes):  #
+        r = sum([change for _, change in count_changes])  #
+        residual = 0.0  #
 
-        for label, change in count_changes:                                                                           #
-            p_new = (self.counts_[label] + change) / (self.sum_ + r)                                                  #
-            p_old = self.counts_[label] / (self.sum_ + r)                                                             #
-                                                                                                                      #
-            residual += p_new * log2(p_new) - p_old * log2(p_old)                                                     #
-                                                                                                                      #
-        return residual                                                                                               #
+        for label, change in count_changes:  #
+            p_new = (self.counts_[label] + change) / (self.sum_ + r)  #
+            p_old = self.counts_[label] / (self.sum_ + r)  #
+            #
+            residual += p_new * log2(p_new) - p_old * log2(p_old)  #
+            #
+        return residual  #
 
-    def _update_counts(self, count_changes):                                                                          #
-        for label, change in count_changes:                                                                           #
-            self.sum_ += change                                                                                       #
-            self.counts_[label] += change                                                                             #
+    def _update_counts(self, count_changes):  #
+        for label, change in count_changes:  #
+            self.sum_ += change  #
+            self.counts_[label] += change  #
 
-    def entropy(self):                                                                                                #
-        return self.entropy_                                                                                          #
+    def entropy(self):  #
+        return self.entropy_  #
 
-    def count(self, label):                                                                                           #
-        return self.counts_[self.label2index[label]]                                                                  #
+    def count(self, label):  #
+        return self.counts_[self.label2index[label]]  #
 
-    def total_counts(self):                                                                                           #
-        return self.sum_                                                                                              #
+    def total_counts(self):  #
+        return self.sum_  #
 
 
 def naive_entropy(counts):  # Calculate entropy the classical way                                                     #
     s = sum(counts)  #
-    return sum([-(r / s) * log2(r / s) for r in counts])                                                              #
-                                                                                                                      #
-                                                                                                                      #
+    return sum([-(r / s) * log2(r / s) for r in counts])  #
+    #
+    #
+
+
 #######################################################################################################################
 
 
@@ -103,10 +105,9 @@ def DataProcessor(input_file):
 
         with open(InFile) as f:
             line = f.readline()  # Read one line at a time and process it
-            diversity = -1  # Defining the value of diversity to start with. -1 is to make the first occurrence zero
-
-            diameter = 0  # Define diameter to hold the current diameter value
-            modularity = 0  # Define modularity to hold the current modularity value
+            diversity = 0  # Defining the value of diversity to start with. -1 is to make the first occurrence zero
+            pielou = 0
+            '''Changed diversity value to 0 to start diversity at 1 instead of 0'''
 
             while line:  # This while loop is to read one line at a time until the lines are finished
                 current_line = [item.strip(',\n\r') for item in line.split(';')]  # Split the line to list at semicolon
@@ -156,6 +157,16 @@ def DataProcessor(input_file):
                                   identifiers_seen[current_line_sorted[2]][0], div, '{:.3f}'.format(entropy.entropy()),
                                   pielou]
                     node_writer.writerow(nodes_list)  # Write the row to nodes csv file
+                else:  # This statement is to take care of the nodes without identifiers.
+                    no_identifier_line_sorted = [current_line[0], current_line[1]]
+                    empty_ident_diversity = 0
+                    empty_ident_specificity = 0
+                    """ The order of the nodes_list is as follows:
+                                        Node ID; TimeStamp; Specificity; Diversity; Entropy; Pielou"""
+                    no_identifier_node_list = [no_identifier_line_sorted[0], no_identifier_line_sorted[1],
+                                               empty_ident_specificity, empty_ident_diversity,
+                                               '{:.3f}'.format(entropy.entropy()),pielou]
+                    node_writer.writerow(no_identifier_node_list)  # Write the row to nodes csv file
 
 
 # ---------------------------- End of Function ---------------------------- #
@@ -223,4 +234,3 @@ sys.stdout = time_file                                                          
 # --------------------------------------------------- #
 #  A Script by Muhammad Ali Hashmi (09-February-2018) #
 # --------------------------------------------------- #
-
