@@ -144,8 +144,8 @@ def DataProcessor(input_file):
                     incremented by 1."""
                     if current_line_sorted[2] not in identifiers_seen:
                         diversity += 1  # Upon seeing a new identifier set, increment diversity by 1
-                        # Add identifier set to dict with 0 specificity and the current value of diversity
-                        identifiers_seen[current_line_sorted[2]] = [0, diversity]
+                        # Add identifier set to dict with 1 specificity and the current value of diversity
+                        identifiers_seen[current_line_sorted[2]] = [1, diversity]
                         div = diversity  # div value used so that 'diversity' value does not change again and again
                     else:  # If identifier already in identifiers_watched dictionary
                         identifiers_seen[current_line_sorted[2]][0] += 1  # Increment its value (specificity) by 1
